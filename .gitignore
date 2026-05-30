@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.env
+config.json
+icloud_cookies.json
+email_blacklist.json
+results/
+backup/
+open_source.zip
+.reasonix/
+*.db

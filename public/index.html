@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ChatGPT Auto Register</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI','Microsoft YaHei',sans-serif;background:#f5f0e8;color:#4a3728;min-height:100vh}
+.nav{background:#fff;padding:12px 20px;display:flex;align-items:center;gap:16px;border-bottom:1px solid #e0d5c5;position:sticky;top:0;z-index:10}
+.nav h1{font-size:18px;color:#6b4226}.nav .user{font-size:13px;color:#8b6f4e;flex:1}
+.nav button{padding:6px 14px;border:1px solid #c4820e;border-radius:4px;background:#fff;color:#c4820e;cursor:pointer;font-size:12px}
+.nav button:hover{background:#c4820e;color:#fff}
+.container{max-width:1100px;margin:0 auto;padding:20px}
+.card{background:#fff;border-radius:8px;padding:20px;margin-bottom:16px;border:1px solid #e8d5b0}
+.card h2{font-size:16px;color:#6b4226;margin-bottom:12px}
+input,select{width:100%;padding:8px 10px;background:#fdf8f0;border:1px solid #d4b896;border-radius:4px;color:#4a3728;font-size:13px;margin:4px 0}
+input:focus,select:focus{outline:none;border-color:#c4820e}
+label{display:block;font-size:12px;color:#8b6f4e;margin-top:8px}
+button.primary{padding:8px 18px;background:#c4820e;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px}
+button.primary:hover{background:#a86e0c}
+button.danger{background:#bc2e2e;color:#fff}
+button.danger:hover{background:#9e2626}
+button.neutral{padding:6px 14px;background:#f0e4d0;color:#4a3728;border:1px solid #d4b896;border-radius:4px;cursor:pointer;font-size:12px}
+button:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.col{flex:1;min-width:200px}
+.log{background:#1e1e1e;border-radius:8px;padding:14px;max-height:500px;overflow-y:auto;font:13px/1.6 Consolas,monospace;color:#d4d4d4}
+.log .info{color:#569cd6}.log .success{color:#4ec9b0}.log .error{color:#f44747}
+.log .time{color:#808080;margin-right:8px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid #e8d5b0}
+th{color:#8b6f4e;font-weight:600}
+.tag{padding:2px 8px;border-radius:3px;font-size:11px}
+.tag-ok{background:#c8e6c9;color:#2e7d32}.tag-fail{background:#ffcdd2;color:#c62828}
+.badge{padding:2px 8px;background:#c4820e;color:#fff;border-radius:10px;font-size:11px}
+.stats{display:flex;gap:16px;margin-bottom:16px}
+.stat{flex:1;padding:16px;background:#fff;border-radius:8px;text-align:center;border:1px solid #e8d5b0}
+.stat .num{font-size:28px;font-weight:bold;color:#6b4226}.stat .lbl{font-size:12px;color:#8b6f4e;margin-top:4px}
+.hidden{display:none}
+.toast{position:fixed;top:12px;right:12px;padding:10px 20px;border-radius:4px;font-size:13px;z-index:999;transition:opacity .3s}
+.toast-ok{background:#c8e6c9;color:#2e7d32}.toast-err{background:#ffcdd2;color:#c62828}
+</style></head><body>
+
+<div class="nav">
+  <h1>ChatGPT Register</h1>
+  <span class="user" id="nav-user"></span>
+  <button onclick="logout()">退出</button>
+</div>
+
+<!-- ============ LOGIN VIEW ============ -->
+<div class="container" id="view-login">
+  <div class="row">
+    <div class="col">
+      <div class="card"><h2>登录</h2>
+        <label>用户名</label><input id="login-user" placeholder="admin">
+        <label>密码</label><input id="login-pass" type="password" placeholder="••••••">
+        <button class="primary" style="margin-top:12px;width:100%" onclick="doLogin()">登录</button>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card"><h2>注册</h2>
+        <label>用户名</label><input id="reg-user" placeholder="3个字以上">
+        <label>密码</label><input id="reg-pass" type="password" placeholder="6个字以上">
+        <label>邀请密钥</label><input id="reg-invite" placeholder="必填">
+        <button class="primary" style="margin-top:12px;width:100%" onclick="doRegister()">注册</button>
+      </div>
+      <div class="card"><h2>兑换密钥</h2>
+        <label>密钥</label><input id="redeem-key" placeholder="邀请码或卡密">
+        <button class="primary" style="margin-top:8px;width:100%" onclick="doRedeem()">兑换</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ADMIN VIEW ============ -->
+<div class="container hidden" id="view-admin">
+  <div class="stats" id="admin-stats"></div>
+
+  <div class="row">
+    <div class="col">
+      <div class="card"><h2>生成邀请码</h2>
+        <label>数量</label><input id="invite-count" value="10" type="number">
+        <label>额度/个</label><input id="invite-quota" value="20" type="number">
+        <button class="primary" style="margin-top:8px;width:100%" onclick="genInvites()">生成</button>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card"><h2>生成卡密</h2>
+        <label>产品</label>
+        <select id="card-product"><option value="icloud_10">iCloud x10</option><option value="icloud_50">iCloud x50</option><option value="icloud_7d">iCloud 7天</option></select>
+        <label>数量</label><input id="card-count" value="1" type="number">
+        <label>可使用次数</label><input id="card-grant" value="10" type="number">
+        <label>有效期(天)</label><input id="card-days" value="30" type="number">
+        <button class="primary" style="margin-top:8px;width:100%" onclick="genCards()">生成卡密</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card"><h2>管理员资产</h2>
+    <label>MailManage API Key</label><input id="asset-mmkey">
+    <label>iCloud Cookies (JSON)</label><textarea id="asset-icloud" rows="3" style="width:100%" placeholder='{"X-APPLE-...": "..."}'></textarea>
+    <button class="primary" style="margin-top:8px" onclick="saveAssets()">保存</button>
+  </div>
+
+  <div class="card"><h2>邀请码列表</h2><table id="invite-table"><thead><tr><th>密钥</th><th>额度</th><th>已用</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+  <div class="card"><h2>卡密列表</h2><table id="card-table"><thead><tr><th>密钥</th><th>产品</th><th>次数</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+</div>
+
+<!-- ============ MEMBER VIEW ============ -->
+<div class="container hidden" id="view-member">
+  <div class="stats">
+    <div class="stat"><span class="num" id="mem-quota">0</span><span class="lbl">剩余次数</span></div>
+    <div class="stat"><span class="num" id="mem-success">0</span><span class="lbl">累计成功</span></div>
+    <div class="stat"><span class="num" id="mem-icloud">-</span><span class="lbl">iCloud</span></div>
+  </div>
+
+  <div class="row">
+    <div class="col">
+      <div class="card"><h2>兑换密钥</h2>
+        <input id="m-redeem" placeholder="邀请码 或 卡密">
+        <button class="primary" style="margin-top:8px;width:100%" onclick="doRedeem()">兑换</button>
+      </div>
+      <div class="card"><h2>接码配置</h2>
+        <label>SMSBower Key</label><input id="cfg-key">
+        <label>代理</label><input id="cfg-proxy" value="socks5h://127.0.0.1:10808">
+        <label>国家</label><input id="cfg-country" value="151">
+        <label>最高价格</label><input id="cfg-price" placeholder="留空=不限">
+        <button class="primary" style="margin-top:8px;width:100%" onclick="saveCfg()">保存配置</button>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card"><h2>注册控制</h2>
+        <label>目标数量</label><input id="m-count" value="1" type="number" min="1" max="99">
+        <div class="row" style="margin-top:8px">
+          <button class="primary" id="btn-start" onclick="startReg()" style="flex:1">开始</button>
+          <button class="danger" id="btn-stop" onclick="stopReg()" disabled>停止</button>
+        </div>
+        <div style="margin-top:8px" class="log" id="mem-log"><span class="info">等待启动...</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="card"><h2>历史记录</h2><table id="hist-table"><thead><tr><th>时间</th><th>手机号</th><th>邮箱</th><th>状态</th></tr></thead><tbody></tbody></table></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var TOKEN='',ROLE='';
+
+function toast(msg,ok){
+  var t=document.getElementById('toast');t.textContent=msg;t.className='toast '+(ok?'toast-ok':'toast-err');
+  t.style.opacity='1';setTimeout(function(){t.style.opacity='0'},2500);
+}
+function show(v){document.querySelectorAll('.container').forEach(function(e){e.classList.add('hidden')});var el=document.getElementById('view-'+v);if(el)el.classList.remove('hidden');}
+
+// ── Auth ──
+function doLogin(){
+  fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:G('login-user').value,password:G('login-pass').value})})
+  .then(function(r){return r.json()}).then(function(j){
+    if(j.ok){TOKEN=j.token;ROLE=j.role;localStorage.setItem('token',TOKEN);localStorage.setItem('role',ROLE);initView();}
+    else toast(j.error,false);
+  });
+}
+function doRegister(){
+  fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:G('reg-user').value,password:G('reg-pass').value,invite_key:G('reg-invite').value})})
+  .then(function(r){return r.json()}).then(function(j){
+    if(j.ok){TOKEN=j.token;ROLE=j.role;localStorage.setItem('token',TOKEN);localStorage.setItem('role',ROLE);initView();}
+    else toast(j.error,false);
+  });
+}
+function doRedeem(){
+  var k=G('redeem-key').value||G('m-redeem').value;
+  if(!k){toast('请输入密钥',false);return}
+  fetch('/api/member/redeem',{method:'POST',headers:auth(),body:JSON.stringify({key:k})})
+  .then(function(r){return r.json()}).then(function(j){
+    if(j.ok){toast((j.type=='card'?'卡密兑换成功! iCloud x'+j.remaining:'邀请码兑换! +'+j.quota_added+'次'),true);refreshMember();}
+    else toast(j.error,false);
+  });
+}
+function logout(){TOKEN='';ROLE='';localStorage.clear();show('login');}
+function G(id){return document.getElementById(id);}
+function auth(){return{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN};}
+
+// ── Init ──
+function initView(){
+  TOKEN=localStorage.getItem('token')||'';ROLE=localStorage.getItem('role')||'';
+  if(!TOKEN){show('login');return}
+  document.getElementById('nav-user').textContent='['+ROLE+']';
+  if(ROLE=='admin'){show('admin');refreshAdmin();}
+  else{show('member');refreshMember();}
+}
+
+// ── Admin ──
+function refreshAdmin(){
+  fetch('/api/admin/stats',{headers:auth()}).then(function(r){return r.json()}).then(function(s){
+    document.getElementById('admin-stats').innerHTML='<div class=stat><span class=num>'+s.users+'</span><span class=lbl>用户</span></div><div class=stat><span class=num>'+s.today_invites+'</span><span class=lbl>今日邀请码</span></div><div class=stat><span class=num>'+s.today_ok+'</span><span class=lbl>今日成功</span></div>';
+  });
+  fetch('/api/admin/invite-list',{headers:auth()}).then(function(r){return r.json()}).then(function(j){
+    var t=document.getElementById('invite-table').querySelector('tbody');t.innerHTML='';
+    j.invites.forEach(function(i){t.innerHTML+='<tr><td><code>'+i.key+'</code></td><td>'+i.grant_quota+'</td><td>'+i.used_count+'/'+i.max_uses+'</td><td>'+(i.is_active?'<button class=neutral onclick=revokeInvite('+i.id+')>吊销</button>':'已吊销')+'</td></tr>';});
+  });
+  fetch('/api/admin/card-list',{headers:auth()}).then(function(r){return r.json()}).then(function(j){
+    var t=document.getElementById('card-table').querySelector('tbody');t.innerHTML='';
+    j.cards.forEach(function(c){t.innerHTML+='<tr><td><code>'+c.key+'</code></td><td>'+c.product+'</td><td>'+c.used_count+'/'+c.max_uses+'</td><td>'+(c.is_active?'<button class=neutral onclick=revokeCard('+c.id+')>吊销</button>':'已吊销')+'</td></tr>';});
+  });
+}
+function genInvites(){
+  fetch('/api/admin/invite-gen',{method:'POST',headers:auth(),body:JSON.stringify({count:parseInt(G('invite-count').value)||10,quota:parseInt(G('invite-quota').value)||20})})
+  .then(function(r){return r.json()}).then(function(j){if(j.ok){toast('生成完成',true);refreshAdmin();}else toast(j.error,false);});
+}
+function genCards(){
+  fetch('/api/admin/card-gen',{method:'POST',headers:auth(),body:JSON.stringify({count:parseInt(G('card-count').value)||1,product:G('card-product').value,grant_count:parseInt(G('card-grant').value)||10,duration_days:parseInt(G('card-days').value)||30})})
+  .then(function(r){return r.json()}).then(function(j){if(j.ok){toast('生成完成',true);refreshAdmin();}else toast(j.error,false);});
+}
+function revokeInvite(id){if(confirm('吊销该邀请码？'))fetch('/api/admin/invite/'+id,{method:'DELETE',headers:auth()}).then(function(){refreshAdmin();});}
+function revokeCard(id){if(confirm('吊销该卡密？'))fetch('/api/admin/card/'+id,{method:'DELETE',headers:auth()}).then(function(){refreshAdmin();});}
+function saveAssets(){
+  fetch('/api/admin/assets',{method:'PUT',headers:auth(),body:JSON.stringify({mailmanage_key:G('asset-mmkey').value,icloud_cookies:G('asset-icloud').value})})
+  .then(function(r){return r.json()}).then(function(j){toast(j.ok?'保存成功':'保存失败',j.ok);});
+}
+
+// ── Member ──
+function refreshMember(){
+  fetch('/api/member/me',{headers:auth()}).then(function(r){return r.json()}).then(function(j){
+    var u=j.user||{},c=j.config||{},ic=j.icloud||{};
+    document.getElementById('mem-quota').textContent=u.quota||0;
+    document.getElementById('mem-success').textContent=u.total_success||0;
+    document.getElementById('mem-icloud').textContent=ic.active?ic.remaining:'无';
+    G('cfg-key').value=c.smsbower_key||'';G('cfg-proxy').value=c.proxy||'socks5h://127.0.0.1:10808';
+    G('cfg-country').value=c.country||'151';G('cfg-price').value=c.max_price||'';
+  });
+  fetch('/api/member/history',{headers:auth()}).then(function(r){return r.json()}).then(function(j){
+    var t=document.getElementById('hist-table').querySelector('tbody');t.innerHTML='';
+    (j.history||[]).forEach(function(h){
+      t.innerHTML+='<tr><td>'+h.created_at+'</td><td>'+h.phone+'</td><td>'+h.email+'</td><td><span class="tag tag-'+(h.status=='ok'?'ok':'fail')+'">'+h.status+'</span></td></tr>';
+    });
+  });
+}
+function saveCfg(){
+  fetch('/api/member/config',{method:'PUT',headers:auth(),body:JSON.stringify({smsbower_key:G('cfg-key').value,proxy:G('cfg-proxy').value,country:G('cfg-country').value,max_price:G('cfg-price').value})})
+  .then(function(r){return r.json()}).then(function(j){toast(j.ok?'保存成功':'保存失败',j.ok);});
+}
+
+// ── Registration ──
+var evtSource=null;
+function startReg(){
+  saveCfg();
+  var c=parseInt(G('m-count').value)||1;
+  fetch('/api/member/register/start',{method:'POST',headers:auth(),body:JSON.stringify({count:c})})
+  .then(function(r){return r.json()}).then(function(j){
+    if(j.ok){G('btn-start').disabled=true;G('btn-stop').disabled=false;connectLog();toast('注册已启动',true);}
+    else toast(j.error,false);
+  });
+}
+function stopReg(){
+  fetch('/api/member/register/stop',{method:'POST',headers:auth()}).then(function(){
+    G('btn-start').disabled=false;G('btn-stop').disabled=true;
+    if(evtSource){evtSource.close();evtSource=null;}toast('已停止',true);
+  });
+}
+function connectLog(){
+  if(evtSource)evtSource.close();
+  var log=document.getElementById('mem-log');log.innerHTML='';
+  evtSource=new EventSource('/api/member/register/log?'+Math.random());
+  evtSource.setRequestHeader=function(){}; // EventSource doesn't support headers, use cookie token
+  // Use fetch-based SSE instead
+  evtSource.close();
+  var lastMsg='';
+  function poll(){
+    fetch('/api/member/register/log',{headers:{'Authorization':'Bearer '+TOKEN}}).then(function(r){
+      var reader=r.body.getReader();var decoder=new TextDecoder();
+      function read(){reader.read().then(function(d){if(d.done)return;var text=decoder.decode(d.value);var lines=text.split('\n');lines.forEach(function(l){if(l.startsWith('data: ')){try{var item=JSON.parse(l.substring(6));if(item.msg&&item.msg!=lastMsg){var div=document.createElement('div');div.innerHTML='<span class=time>'+item.time+'</span>'+item.msg;div.className=item.tag||'info';log.appendChild(div);log.scrollTop=log.scrollHeight;if(log.children.length>300)for(var i=0;i<50;i++)log.removeChild(log.firstChild);lastMsg=item.msg;}}}catch(e){}});read();});}
+      read();
+    });
+  }
+  // Simple SSE via EventSource with token in URL
+  evtSource=new EventSource('/api/member/register/log');
+  evtSource.onmessage=function(e){if(!e.data)return;try{var item=JSON.parse(e.data);if(item.msg){var div=document.createElement('div');div.innerHTML='<span class=time>'+item.time+'</span>'+item.msg;div.className=item.tag||'info';log.appendChild(div);log.scrollTop=log.scrollHeight;if(log.children.length>300)for(var i=0;i<50;i++)log.removeChild(log.firstChild);}}catch(ex){}};
+  evtSource.onerror=function(){G('btn-start').disabled=false;G('btn-stop').disabled=true;refreshMember();};
+}
+
+initView();
+setInterval(function(){if(ROLE=='admin')refreshAdmin();if(ROLE=='member')refreshMember();},15000);
+</script></body></html>

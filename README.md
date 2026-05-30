@@ -1,5 +1,8 @@
 # ChatGPT Auto Register
 
+> 💬 交流群：**1060714372**
+> 🍎 建议搭配 [heartmore/icloud-hme](https://github.com/heartmore/icloud-hme) 食用 — iCloud Hide My Email 纯协议管理工具
+
 纯协议逆向实现的 ChatGPT 手机号全自动注册工具。无需浏览器，从获取号码到拿到 Session Token 端到端自动化。
 
 基于 [heartmore/chatgpt-auto-register](https://github.com/heartmore/chatgpt-auto-register) 改进。
@@ -151,6 +154,12 @@ python icloud_hme.py export-cookies
 ├── requirements.txt        # Python 依赖
 └── README.md
 ```
+
+---
+
+## 相关项目
+
+- [heartmore/icloud-hme](https://github.com/heartmore/icloud-hme) — iCloud Hide My Email 纯协议管理，一键导出 cookies，搭配本工具完成全链路注册
 
 ---
 
